@@ -2,7 +2,6 @@
 
 A speacil version of JDBot by me.
 
-
 ## Tables
 
 That's Right, this guide will be on the table designs I use.
@@ -11,8 +10,10 @@ This way you can set it up yourself.
 All tables in [table.sql](table.sql).
 
 ## Systemd Service
+
 Here is the template for the systemd service file.
-```
+
+```toml
 [Unit]
 Description=Runs the Bot Sincroni
 After=network-online.target
@@ -32,9 +33,11 @@ WantedBy=default.target
 ```
 
 ## Environment File
+
 Here is the template for the environment file.
+
 ```env
-TOKEN = ""
+TOKEN =
 # Token of the bot
 
 DB_key = 
