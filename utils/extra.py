@@ -7,6 +7,6 @@ class ChatType(enum.IntEnum):
     private = 2
 
 
-class BlacklistType(enum.IntEnum):
+class FilterType(enum.IntEnum):
     user = 0
     server = 1
