@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 import asyncpg
 
@@ -33,7 +33,7 @@ class DatabaseConnection:
 
         # channel_id: GlobalChat
         self._global_chats: Dict[int, GlobalChat] = {}
-        # id: Blacklist
+        # enity_id: Blacklist
         self._blacklists: Dict[int, Blacklist] = {}
         # id: Whitelist
         self._whitelists: Dict[int, Whitelist] = {}
@@ -146,39 +146,50 @@ class DatabaseConnection:
 
         return self.blacklists
 
-    async def fetch_blacklist(self, _id: int, /) -> Optional[Blacklist]:
+    async def fetch_blacklist(self, entity_id: int, /) -> Optional[Blacklist]:
         query = "SELECT * FROM SICRONI_BLACKLIST WHERE id = $1"
         ...
 
-    def get_blacklist(self, _id: int) -> Optional[Blacklist]:
+    def get_blacklist(self, entity_id: int) -> Optional[Blacklist]:
         ...
 
-    async def remove_blacklist(self, _id: int, /) -> Optional[Blacklist]:
+    async def remove_blacklist(self, entity_id: int, /) -> Optional[Blacklist]:
         query = "DELETE FROM SICRONI_BLACKLIST WHERE id = $1"
         ...
 
     async def add_blacklist(
         self,
-        server_id: int,
         entity_id: int,
-        pub: bool = False,
-        dev: bool = False,
-        private: bool = False,
-        blacklist_type: FilterType = FilterType.user,
+        types: Union[list[ChatType], ChatType],
+        is_global: bool = False,
     ) -> Blacklist:
-        query = """
-            INSERT INTO SICRONI_BLACKLIST (
-                server_id,
-                entity_id,
-                pub,
-                dev,
-                private,
-                blacklist_type
-            ) 
-            VALUES ($1, $2, $3, $4, $5, $6) 
-            RETURNING *
-            """
-        ...
+        values = []
+        # assing types to a list if it's not
+        if isinstance(types, ChatType):
+            types = [types]
+
+        column_values = {
+            "server_id": 0 if is_global else entity_id,
+            "entity_id": entity_id,
+            "pub": ChatType.public in types,
+            "dev": ChatType.developer in types,
+            "private": ChatType.private in types,
+            "blacklist_type": FilterType.user.value if is_global else FilterType.server.value,
+        }
+        for i, (key, value) in enumerate(column_values.items()):
+            values.insert(i, (key, value))
+
+        query = f"""
+                INSERT INTO SICRONI_BLACKLIST (
+                    {', '.join(f"{key}" for key, _ in values)}
+                ) VALUES (
+                    {', '.join(f"${index}" for index, (_, _) in enumerate(values, start=1))}
+                ) RETURNING *
+                """
+
+        data: CustomRecordClass = await self.fetchrow(query, *[value for _, value in values])  # type: ignore
+        self._blacklists[data["entity_id"]] = Blacklist(self, data) # type: ignore
+        return self._blacklists[data["entity_id"]] # type: ignore
 
     # Whitelist
 
